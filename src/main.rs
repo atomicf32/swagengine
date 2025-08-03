@@ -1,5 +1,6 @@
 mod world;
 mod renderer;
+mod resource_manager;
 
 use std::sync::Arc;
 
