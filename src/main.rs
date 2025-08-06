@@ -3,12 +3,12 @@ mod renderer;
 mod resource_manager;
 mod player;
 
-use std::sync::Arc;
+use std::{sync::Arc, time::Instant};
 
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use winit::{application::ApplicationHandler, event::WindowEvent, event_loop::EventLoop, window::Window};
 
-use crate::{renderer::Renderer, resource_manager::save_region, world::Region};
+use crate::{renderer::Renderer, resource_manager::{compress_all_regions, decompress_all_regions, save_region, load_region}, world::Region};
 
 pub struct App {
     proxy: Option<winit::event_loop::EventLoopProxy<Renderer>>,
@@ -70,13 +70,10 @@ impl ApplicationHandler<Renderer> for App {
 }
 
 fn main() {
-    (0..1000).into_par_iter().for_each(|x| {
-        save_region(Region::new((x, 0)));
-    });
-    // env_logger::init();
+    env_logger::init();
 
-    // let event_loop = EventLoop::with_user_event().build().unwrap();
+    let event_loop = EventLoop::with_user_event().build().unwrap();
 
-    // let mut app = App::new(&event_loop);
-    // event_loop.run_app(&mut app).unwrap();
+    let mut app = App::new(&event_loop);
+    event_loop.run_app(&mut app).unwrap();
 }
