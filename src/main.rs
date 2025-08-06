@@ -69,8 +69,6 @@ impl ApplicationHandler<Renderer> for App {
 
 fn main() {
     env_logger::init();
-    
-    let world = vec![vec![vec![Chunk::new()]]];
 
     let event_loop = EventLoop::with_user_event().build().unwrap();
 
