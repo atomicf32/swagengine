@@ -1,5 +1,4 @@
 use std::vec;
-
 use bincode::{Decode, Encode};
 use rand::{rng, Rng};
 use serde::{Deserialize, Serialize};
@@ -78,6 +77,5 @@ impl Region {
     }
 }
 
-#[derive(Serialize, Deserialize)]
 pub struct World {
 } 
