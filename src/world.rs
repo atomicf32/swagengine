@@ -1,47 +1,67 @@
-use std::array::from_fn;
+use std::vec;
 
 use bincode::{Decode, Encode};
+use rand::{rng, Rng};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Encode, Decode)]
 pub enum Block {
-    STONE,
+    AIR,
     DIRT,
     GRASS,
-    AIR
+    STONE
 }
 
-#[derive(Encode, Decode)]
+impl Block{
+    pub fn rand() -> Self {
+        let mut rng = rng();
+        match rng.random_range(0..4) {
+            0 => Block::AIR,
+            1 => Block::DIRT,
+            2 => Block::GRASS,
+            _ => Block::STONE,
+        }
+    }
+}
+
+#[derive(Clone, Encode, Decode)]
 pub struct Chunk {
-    blocks: Box<[[[Block; 16]; 16]; 16]>, //Chunk size = blocks 4096
+    blocks: Vec<Block> //Chunk size = blocks 131072
 }
 
 impl Chunk {
-    pub fn new() -> Self {
-        Self {
-            blocks: Box::new([[[Block::DIRT; 16]; 16]; 16]),
+    pub fn rand() -> Self {
+        let mut block_vec = Vec::with_capacity(131072);
+        for _ in 0..block_vec.capacity() {
+            block_vec.push(Block::rand());
         } 
+
+        Self {
+             blocks: block_vec
+        }
     }
 
-    pub fn get_block (&self, position: (usize, usize, usize)) -> Block {
-        self.blocks[position.0][position.1][position.2]
+    pub fn blank() -> Self {
+        Self {
+            blocks: vec![Block::AIR; 131072]
+        }
+    }
+
+    pub fn get_block(&self, (x, y, z): (i32, i32, i32)) -> Option<&Block> {
+        let index = (x + y * 16 + z * 16 * 512) as usize;
+        self.blocks.get(index)
     }
 }
 
 #[derive(Encode, Decode)]
 pub struct Region {
-    chunks: Box<[[[Chunk; 32]; 4]; 4]>,
+    chunks: Vec<Chunk>, //Region size = 25 chunks = 3276800 blocks
     position: (i32, i32)
 }
 
 impl Region {
     pub fn new(position: (i32, i32)) -> Self {
-        let chunks = Box::new(
-            from_fn(|_x: usize| {
-                from_fn( |_y| {
-                    from_fn(|_z| Chunk::new())
-                })
-        }));
+        let chunks = vec![Chunk::rand(); 25]; //Regionis 5 * 5 chunks
         Self {
             chunks: chunks,
             position,
@@ -52,8 +72,9 @@ impl Region {
         self.position
     }
 
-    pub fn get_chunk(&mut self, position: (usize, usize, usize)) -> &mut Chunk {
-        &mut self.chunks[position.0][position.1][position.2]
+    pub fn get_chunk(&self, (x, y): (i32, i32)) -> Option<&Chunk> {
+        let index = (x + y * 5) as usize;
+        self.chunks.get(index)
     }
 }
 
