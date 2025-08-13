@@ -76,6 +76,3 @@ impl Region {
         self.chunks.get(index)
     }
 }
-
-pub struct World {
-} 

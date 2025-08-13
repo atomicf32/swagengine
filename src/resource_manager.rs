@@ -1,8 +1,73 @@
-use std::{fs::{self, File}, io::{BufWriter, BufReader, Write, Read}, path::Path};
+use std::{collections::HashMap, fs::{self, File}, io::{BufReader, BufWriter, Read, Write}, path::Path, sync::Arc};
 use anyhow::Result;
 use tar::{Builder, Archive};
 use zstd::stream::{Encoder, Decoder};
-use crate::world::Region;
+use crate::{renderer::{common::{Mesh, Vertex}, Renderer}, world::Region};
+
+pub struct ResourceManager {
+    loaded_meshes: HashMap<&'static str, Arc<Mesh>>
+}
+
+impl ResourceManager {
+    pub fn new() -> Self {
+        Self { loaded_meshes: HashMap::new() }
+    }
+
+    pub fn load_mesh(&mut self, path: &str, renderer: &Renderer) -> Arc<Mesh> {
+        if let Some(mesh) = self.loaded_meshes.get(path) {
+            return mesh.clone();
+        } else {
+            todo!()
+        }
+    }
+
+    pub fn load_cube(&mut self, renderer: &Renderer) -> Arc<Mesh> {
+        if let Some(mesh) = self.loaded_meshes.get("internal/cube") {
+            return mesh.clone();
+        } else {
+            let vertices: &[Vertex] = &[
+                Vertex::new(-0.5, -0.5, -0.5,  0.0, 0.0),
+                Vertex::new( 0.5, -0.5, -0.5,  1.0, 0.0),
+                Vertex::new( 0.5,  0.5, -0.5,  1.0, 1.0),
+                Vertex::new( 0.5,  0.5, -0.5,  1.0, 1.0),
+                Vertex::new(-0.5,  0.5, -0.5,  0.0, 1.0),
+                Vertex::new(-0.5, -0.5, -0.5,  0.0, 0.0),
+                Vertex::new(-0.5, -0.5,  0.5,  0.0, 0.0),
+                Vertex::new( 0.5, -0.5,  0.5,  1.0, 0.0),
+                Vertex::new( 0.5,  0.5,  0.5,  1.0, 1.0),
+                Vertex::new( 0.5,  0.5,  0.5,  1.0, 1.0),
+                Vertex::new(-0.5,  0.5,  0.5,  0.0, 1.0),
+                Vertex::new(-0.5, -0.5,  0.5,  0.0, 0.0),
+                Vertex::new(-0.5,  0.5,  0.5,  1.0, 0.0),
+                Vertex::new(-0.5,  0.5, -0.5,  1.0, 1.0),
+                Vertex::new(-0.5, -0.5, -0.5,  0.0, 1.0),
+                Vertex::new(-0.5, -0.5, -0.5,  0.0, 1.0),
+                Vertex::new(-0.5, -0.5,  0.5,  0.0, 0.0),
+                Vertex::new(-0.5,  0.5,  0.5,  1.0, 0.0),
+                Vertex::new( 0.5,  0.5,  0.5,  1.0, 0.0),
+                Vertex::new( 0.5,  0.5, -0.5,  1.0, 1.0),
+                Vertex::new( 0.5, -0.5, -0.5,  0.0, 1.0),
+                Vertex::new( 0.5, -0.5, -0.5,  0.0, 1.0),
+                Vertex::new( 0.5, -0.5,  0.5,  0.0, 0.0),
+                Vertex::new( 0.5,  0.5,  0.5,  1.0, 0.0),
+                Vertex::new(-0.5, -0.5, -0.5,  0.0, 1.0),
+                Vertex::new( 0.5, -0.5, -0.5,  1.0, 1.0),
+                Vertex::new( 0.5, -0.5,  0.5,  1.0, 0.0),
+                Vertex::new( 0.5, -0.5,  0.5,  1.0, 0.0),
+                Vertex::new(-0.5, -0.5,  0.5,  0.0, 0.0),
+                Vertex::new(-0.5, -0.5, -0.5,  0.0, 1.0),
+                Vertex::new(-0.5,  0.5, -0.5,  0.0, 1.0),
+                Vertex::new( 0.5,  0.5, -0.5,  1.0, 1.0),
+                Vertex::new( 0.5,  0.5,  0.5,  1.0, 0.0),
+                Vertex::new( 0.5,  0.5,  0.5,  1.0, 0.0),
+                Vertex::new(-0.5,  0.5,  0.5,  0.0, 0.0),
+                Vertex::new(-0.5,  0.5, -0.5,  0.0, 1.0)
+            ];
+
+            renderer.create_mesh(vertices, None)
+        }
+    }
+}
 
 pub fn save_region (region: Region) -> Result<()> {
     fs::create_dir_all("regions")?;
@@ -50,3 +115,4 @@ pub fn decompress_all_regions() -> Result<()> {
     archive.unpack("regions")?;
     Ok(())
 }
+

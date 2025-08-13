@@ -1,7 +1,12 @@
+pub mod common;
+
 use std::sync::Arc;
 
 use pollster::FutureExt;
+use wgpu::util::DeviceExt;
 use winit::window::Window;
+
+use crate::{renderer::common::{Mesh, Vertex}, resource_manager::ResourceManager, state::State, world::Region};
 
 pub struct Renderer {
     surface: wgpu::Surface<'static>,
@@ -70,7 +75,7 @@ impl Renderer {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: Some("vs_main"),
-                buffers: &[],
+                buffers: &[common::Vertex::desc()],
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
             },
             fragment: Some(wgpu::FragmentState {
@@ -114,7 +119,7 @@ impl Renderer {
         }
     }
 
-    pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
+    pub fn render(&mut self, state: &State, resource_manager: &mut ResourceManager) -> Result<(), wgpu::SurfaceError> {
         self.window.request_redraw();
 
         if !self.is_surface_configured {
@@ -138,9 +143,9 @@ impl Renderer {
                     depth_slice: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.5,
+                            r: 0.0,
                             g: 0.0,
-                            b: 0.5,
+                            b: 0.0,
                             a: 1.0,
                         }),
                         store: wgpu::StoreOp::Store,
@@ -151,8 +156,17 @@ impl Renderer {
                 timestamp_writes: None,
             });
 
+            let cube_mesh = resource_manager.load_cube(self);
+
             render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.draw(0..3, 0..1);
+            render_pass.set_vertex_buffer(0, cube_mesh.vertex_buffer.slice(..));
+
+            if let Some(ref index_buffer) = cube_mesh.index_buffer {
+                render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+                render_pass.draw_indexed(0..cube_mesh.len_vertices, 0, 0..1);
+            } else {
+                render_pass.draw(0..cube_mesh.len_vertices, 0..1);
+            }
         }
 
         self.queue.submit(std::iter::once(encoder.finish()));
@@ -164,4 +178,29 @@ impl Renderer {
     pub fn window(&self) -> Arc<Window> {
         self.window.clone()
     }
+
+    pub fn create_mesh(&self, vertices: &[Vertex], indices: Option<&[u16]>) -> Arc<Mesh> {
+        let vertex_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: None,
+            contents: bytemuck::cast_slice(vertices),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+
+        if let Some(indices) = indices {
+            let index_buffer = Some(self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: None,
+                contents: bytemuck::cast_slice(indices),
+                usage: wgpu::BufferUsages::INDEX
+            }));
+
+            Arc::new(Mesh { vertex_buffer, index_buffer, len_vertices: indices.len() as u32 })
+        } else {
+            Arc::new(Mesh {
+                vertex_buffer,
+                index_buffer: None,
+                len_vertices: vertices.len() as u32
+            })
+        }
+    }
 }
+

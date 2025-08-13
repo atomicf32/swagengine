@@ -1,7 +1,11 @@
+use glam::{Quat, Vec3A};
+
 pub struct Player {
     health: Health,
     hunger: Hunger,
-    inventory: Inventory
+    inventory: Inventory,
+    position: Vec3A,
+    rotation: Quat
 }
 
 impl Player {
@@ -16,7 +20,9 @@ impl Player {
             },
             inventory: Inventory {
                 slots: vec![Slot {items: vec![Item::DIRT_BLOCK; 64]}; 36]
-            }
+            },
+            position: Vec3A::ZERO,
+            rotation: Quat::IDENTITY
         }
     }
 }
