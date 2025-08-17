@@ -2,11 +2,12 @@ pub mod common;
 
 use std::sync::Arc;
 
+use glam::Mat4;
 use pollster::FutureExt;
 use wgpu::util::DeviceExt;
 use winit::window::Window;
 
-use crate::{renderer::common::{Mesh, Vertex}, resource_manager::ResourceManager, state::State, world::Region};
+use crate::{player::Player, renderer::common::{Mesh, Vertex}, resource_manager::ResourceManager, state::State, world::Region};
 
 pub struct Renderer {
     surface: wgpu::Surface<'static>,
@@ -15,6 +16,8 @@ pub struct Renderer {
     config: wgpu::SurfaceConfiguration,
     is_surface_configured: bool,
     render_pipeline: wgpu::RenderPipeline,
+    camera_buffer: wgpu::Buffer,
+    camera_bind_group: wgpu::BindGroup,
     window: Arc<Window>,
 }
 
@@ -63,9 +66,45 @@ impl Renderer {
 
         let shader = device.create_shader_module(wgpu::include_wgsl!("shader.wgsl"));
 
+
+
+        let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Camera Buffer"),
+            contents: bytemuck::cast_slice(&[Mat4::IDENTITY.to_cols_array_2d()]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        let camera_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }
+            ],
+            label: Some("camera_bind_group_layout"),
+        });
+
+
+        let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &camera_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: camera_buffer.as_entire_binding(),
+                }
+            ],
+            label: Some("camera_bind_group"),
+        });
+
         let render_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
-            bind_group_layouts: &[],
+            bind_group_layouts: &[&camera_bind_group_layout],
             push_constant_ranges: &[],
         });
 
@@ -107,7 +146,7 @@ impl Renderer {
             cache: None,
         });
 
-        Self { surface, device, queue, config, is_surface_configured: false, render_pipeline, window }
+        Self { surface, device, queue, config, is_surface_configured: false, render_pipeline, camera_buffer, camera_bind_group, window }
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
@@ -135,6 +174,12 @@ impl Renderer {
         });
 
         {
+            let view_proj = (Mat4::perspective_infinite_rh(75.0, self.config.width as f32 / self.config.height as f32, 0.1)
+                        * Mat4::from_rotation_translation(state.player.rotation, state.player.position.into()))
+                        .to_cols_array_2d();
+
+            self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[view_proj]));
+
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -159,8 +204,10 @@ impl Renderer {
             let cube_mesh = resource_manager.load_cube(self);
 
             render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.set_vertex_buffer(0, cube_mesh.vertex_buffer.slice(..));
+            render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
 
+            render_pass.set_vertex_buffer(0, cube_mesh.vertex_buffer.slice(..));
+            
             if let Some(ref index_buffer) = cube_mesh.index_buffer {
                 render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16);
                 render_pass.draw_indexed(0..cube_mesh.len_vertices, 0, 0..1);
@@ -203,4 +250,3 @@ impl Renderer {
         }
     }
 }
-

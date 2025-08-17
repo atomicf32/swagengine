@@ -4,8 +4,8 @@ pub struct Player {
     health: Health,
     hunger: Hunger,
     inventory: Inventory,
-    position: Vec3A,
-    rotation: Quat
+    pub position: Vec3A,
+    pub rotation: Quat
 }
 
 impl Player {
@@ -21,8 +21,8 @@ impl Player {
             inventory: Inventory {
                 slots: vec![Slot {items: vec![Item::DIRT_BLOCK; 64]}; 36]
             },
-            position: Vec3A::ZERO,
-            rotation: Quat::IDENTITY
+            position: Vec3A::new(0.0, 0.0, -6.0),
+            rotation: Quat::from_euler(glam::EulerRot::XYZ, 30f32.to_radians(), 30f32.to_radians(), 0f32)
         }
     }
 }
